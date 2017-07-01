@@ -35,6 +35,7 @@ public class FirebasePaths{
     public static final String FollowingPath = "follows";
     public static final String Image = "imaeg";
     public static final String Thumbnail = "thumbnail";
+    public static final String BTyping = "typing";
 
     private String url;
     private static StringBuilder builder = new StringBuilder();

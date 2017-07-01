@@ -8,6 +8,8 @@
 package co.chatsdk.ui.chat;
 
 import android.content.Context;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.AttributeSet;
 import android.view.KeyEvent;
 import android.view.View;
@@ -19,13 +21,18 @@ import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import co.chatsdk.core.NM;
+import co.chatsdk.core.handlers.TypingIndicatorHandler;
 import co.chatsdk.ui.R;
 import co.chatsdk.core.defines.Debug;
 import co.chatsdk.ui.helpers.DialogUtils;
 import co.chatsdk.ui.utils.Utils;
 import com.github.johnpersano.supertoasts.SuperToast;
 
-public class TextInputView extends LinearLayout implements View.OnClickListener , View.OnKeyListener, TextView.OnEditorActionListener{
+import java.util.Timer;
+import java.util.TimerTask;
+
+public class TextInputView extends LinearLayout implements View.OnClickListener , View.OnKeyListener, TextView.OnEditorActionListener {
 
     public static final String TAG = TextInputView.class.getSimpleName();
     public static final boolean DEBUG = Debug.ChatMessageBoxView;
@@ -36,6 +43,7 @@ public class TextInputView extends LinearLayout implements View.OnClickListener 
     protected ImageButton btnOptions;
     protected EditText etMessage;
     protected PopupWindow optionPopup;
+
 
     /** The alert toast that the app will use to alert the user.*/
     protected SuperToast alertToast;
@@ -78,6 +86,7 @@ public class TextInputView extends LinearLayout implements View.OnClickListener 
 
         etMessage.setOnEditorActionListener(this);
         etMessage.setOnKeyListener(this);
+
     }
 
     /** Show the message option popup, From here the user can send images and location messages.*/
@@ -185,11 +194,6 @@ public class TextInputView extends LinearLayout implements View.OnClickListener 
     public SuperToast getAlertToast() {
         return alertToast;
     }
-
-
-
-
-
 
     public interface MessageBoxOptionsListener{
         public void onLocationPressed();

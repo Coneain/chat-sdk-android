@@ -19,6 +19,8 @@ import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.widget.SwipeRefreshLayout;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -42,6 +44,7 @@ import co.chatsdk.core.dao.BUser;
 import co.chatsdk.core.dao.sorter.MessageSorter;
 import co.chatsdk.core.events.EventType;
 import co.chatsdk.core.events.NetworkEvent;
+import co.chatsdk.core.handlers.TypingIndicatorHandler;
 import co.chatsdk.core.interfaces.ThreadType;
 import co.chatsdk.core.types.Defines;
 import co.chatsdk.core.types.MessageUploadResult;
@@ -68,18 +71,21 @@ import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.appindexing.Thing;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.vision.text.Text;
 
 import org.apache.commons.lang3.StringUtils;
 import org.greenrobot.greendao.query.QueryBuilder;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import co.chatsdk.ui.utils.Strings;
 
 import timber.log.Timber;
 
-public class ChatActivity extends BaseActivity implements AbsListView.OnScrollListener {
+public class ChatActivity extends BaseActivity implements AbsListView.OnScrollListener, TextWatcher {
 
     private static final String TAG = ChatActivity.class.getSimpleName();
     private static final boolean DEBUG = Debug.ChatActivity;
@@ -99,6 +105,9 @@ public class ChatActivity extends BaseActivity implements AbsListView.OnScrollLi
             Manifest.permission.WRITE_EXTERNAL_STORAGE
     };
 
+    private Timer singleTimer = new Timer();
+    private final long typingTimeout  = 4000;
+
     /**
      * The key to get the thread long id.
      */
@@ -116,10 +125,13 @@ public class ChatActivity extends BaseActivity implements AbsListView.OnScrollLi
     protected ListView listMessages;
     protected MessagesListAdapter messagesListAdapter;
     protected BThread thread;
+    private TextView usersTyping;
 
     private Disposable messageAddedDisposable;
     private Disposable threadChangedDisposable;
     private Disposable userUpdatedDisposable;
+    private Disposable threadUsersTypingDisposable;
+
 
     protected ProgressBar progressBar;
     protected int listPos = -1;
@@ -214,11 +226,12 @@ public class ChatActivity extends BaseActivity implements AbsListView.OnScrollLi
                 }
             });
 
-            TextView textView = (TextView) actionBarView.findViewById(R.id.chat_sdk_name);
+            TextView chatName = (TextView) actionBarView.findViewById(R.id.chat_sdk_name);
+            usersTyping = (TextView) actionBarView.findViewById(R.id.chat_sdk_users_typing);
 
             String displayName = Strings.nameForThread(thread);
             setTitle(displayName);
-            textView.setText(displayName);
+            chatName.setText(displayName);
 
             final CircleImageView circleImageView = (CircleImageView) actionBarView.findViewById(R.id.chat_sdk_circle_image);
 
@@ -230,6 +243,8 @@ public class ChatActivity extends BaseActivity implements AbsListView.OnScrollLi
                     ab.setCustomView(actionBarView);
                 }
             });
+
+            usersTyping.setText("");
 
             ab.setCustomView(actionBarView);
 
@@ -251,6 +266,8 @@ public class ChatActivity extends BaseActivity implements AbsListView.OnScrollLi
                 sendMessage(text, true);
             }
         });
+
+        if (NM.typingIndicator() != null) textInputView.etMessage.addTextChangedListener(this);
 
         textInputView.setMessageBoxOptionsListener(new TextInputView.MessageBoxOptionsListener() {
             @Override
@@ -374,6 +391,39 @@ public class ChatActivity extends BaseActivity implements AbsListView.OnScrollLi
             );
         }
     }
+
+    @Override
+    public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+    }
+
+    @Override
+    public void onTextChanged(CharSequence s, int start, int before, int count) {
+        if(s.length() != 0) {
+            NM.typingIndicator().setChatState(thread, TypingIndicatorHandler.ChatStates.COMPOSING);
+
+            if ( singleTimer != null ){
+                singleTimer.cancel();
+            }
+
+            singleTimer = new Timer();
+            singleTimer.schedule(new StartedTypingTimerTask(), typingTimeout);
+        }else{
+            NM.typingIndicator().setChatState(thread, TypingIndicatorHandler.ChatStates.INACTIVE);
+        }
+    }
+
+    private class StartedTypingTimerTask extends TimerTask {
+
+        @Override
+        public void run() {
+            NM.typingIndicator().setChatState(thread, TypingIndicatorHandler.ChatStates.INACTIVE);
+        }
+    }
+
+    @Override
+    public void afterTextChanged(Editable s) {
+    }
+
 
     /**
      * Send text message
@@ -536,6 +586,16 @@ public class ChatActivity extends BaseActivity implements AbsListView.OnScrollLi
                     @Override
                     public void accept(NetworkEvent networkEvent) throws Exception {
                         messagesListAdapter.notifyDataSetChanged();
+                    }
+                });
+
+        threadUsersTypingDisposable = NM.events().sourceOnMain()
+                .filter(PredicateFactory.type(EventType.ThreadUsersTypingChanged))
+                .filter(PredicateFactory.threadEntityID(thread.getEntityID()))
+                .subscribe(new Consumer<NetworkEvent>() {
+                    @Override
+                    public void accept(NetworkEvent networkEvent) throws Exception {
+                        usersTyping.setText(networkEvent.metadata);
                     }
                 });
 

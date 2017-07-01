@@ -100,7 +100,10 @@ public class UserWrapper {
 
         String name = authData.getDisplayName();
         String email = authData.getEmail();
-        String profileURL = authData.getPhotoUrl().toString();
+        String profileURL = null;
+
+        if (authData.getPhotoUrl() != null)
+            profileURL = authData.getPhotoUrl().toString();
 
         String token = null;
         Object tokenObject = NM.auth().getLoginInfo().get(co.chatsdk.core.types.Defines.Prefs.TokenKey);

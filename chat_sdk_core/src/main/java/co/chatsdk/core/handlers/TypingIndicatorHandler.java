@@ -8,8 +8,18 @@ import co.chatsdk.core.dao.BThread;
 
 public interface TypingIndicatorHandler {
 
-    public void typingOn (BThread thread);
-    public void typingOff (BThread thread);
+    enum ChatStates{
+        GONE,
+        ACTIVE,
+        INACTIVE,
+        COMPOSING,
+        PAUSED
+    }
+
+    void typingOn (BThread thread);
+    void typingOff (BThread thread);
+
+    void setChatState(BThread thread, ChatStates chatState);
 //
 //    -(RXPromise *) setChatState: (bChatState) state forThread: (id<PThread>) thread;
 }

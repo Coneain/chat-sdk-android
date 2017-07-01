@@ -1,5 +1,8 @@
 package co.chatsdk.core.events;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import co.chatsdk.core.dao.BMessage;
 import co.chatsdk.core.dao.BThread;
 import co.chatsdk.core.dao.BUser;
@@ -15,24 +18,31 @@ public class NetworkEvent {
     public BMessage message;
     public BThread thread;
     public BUser user;
+    public String metadata;
 
     public NetworkEvent(EventType type) {
         this.type = type;
     }
 
     public NetworkEvent(EventType type, BThread thread) {
-        this(type, thread, null, null);
+        this(type, thread, null, null, null);
     }
 
     public NetworkEvent(EventType type, BThread thread, BMessage message) {
-        this(type, thread, message, null);
+        this(type, thread, message, null, null);
+    }
+    public NetworkEvent(EventType type, BThread thread, String metadata){
+        this(type, thread, null, null, metadata);
     }
 
-    public NetworkEvent(EventType type, BThread thread, BMessage message, BUser user) {
+
+
+    public NetworkEvent(EventType type, BThread thread, BMessage message, BUser user, String metadata) {
         this.type = type;
         this.thread = thread;
         this.message = message;
         this.user = user;
+        this.metadata = metadata;
     }
 
     public static NetworkEvent privateThreadAdded (BThread thread) {
@@ -75,12 +85,16 @@ public class NetworkEvent {
         return new NetworkEvent(EventType.MessageAdded, thread, message);
     }
 
+    public static NetworkEvent threadUsersTypingChanged (BThread thread, String metadata){
+        return new NetworkEvent(EventType.ThreadUsersTypingChanged, thread, metadata);
+    }
+
     public static NetworkEvent threadUsersChanged (BThread thread, BUser user) {
-        return new NetworkEvent(EventType.ThreadUsersChanged, thread, null, user);
+        return new NetworkEvent(EventType.ThreadUsersChanged, thread, null, user, null);
     }
 
     public static NetworkEvent userMetaUpdated (BUser user) {
-        return new NetworkEvent(EventType.UserMetaUpdated, null, null, user);
+        return new NetworkEvent(EventType.UserMetaUpdated, null, null, user, null);
     }
 
     public Predicate<NetworkEvent> filter () {
